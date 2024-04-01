@@ -1,4 +1,4 @@
-use anyhow::{Error as E, Result};
+use anyhow::Error as E;
 use candle_core::Tensor;
 use godot::engine::IObject;
 use godot::engine::Object;
@@ -6,9 +6,7 @@ use godot::obj::WithBaseField;
 use godot::prelude::*;
 use inference::embedding::EmbeddingModel;
 use inference::text_generation::TextGeneration;
-use std::borrow::BorrowMut;
 use std::cell::RefCell;
-use std::sync::mpsc::Receiver;
 
 #[gdextension]
 unsafe impl ExtensionLibrary for Jovia {}
@@ -19,7 +17,6 @@ pub struct TextGenerator {
     base: Base<Object>,
     pipeline: RefCell<Option<TextGeneration>>,
     tokens: Vec<String>,
-    rx: Option<Receiver<String>>,
 }
 
 #[godot_api]
@@ -28,7 +25,6 @@ impl IObject for TextGenerator {
         Self {
             base,
             pipeline: RefCell::new(None),
-            rx: None,
             tokens: Vec::new(),
         }
     }
@@ -79,7 +75,7 @@ impl TextGenerator {
             .token_to_id("</s>")
             .unwrap();
         let prompt_template =
-            "<|system|>{system}</s>\n<|user|>{prompt}</s>\n<|assistant|>".to_string();
+            format!("<|system|>{system}</s>\n<|user|>{prompt}</s>\n<|assistant|>");
 
         let mut tokens = self
             .pipeline
@@ -87,14 +83,12 @@ impl TextGenerator {
             .as_mut()
             .unwrap()
             .tokenizer
-            .encode(prompt.clone(), true)
+            .encode(prompt_template.clone(), true)
             .map_err(E::msg)
             .unwrap()
             .get_ids()
             .to_vec();
 
-        println!("Starting the inference loop");
-        println!("{prompt:?}");
         // Inference loop
         let mut index_pos = 0;
         for i in 0..sample_len {
