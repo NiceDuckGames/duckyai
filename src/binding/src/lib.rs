@@ -7,6 +7,7 @@ use godot::prelude::*;
 use inference::embedding::EmbeddingModel;
 use inference::text_generation::TextGeneration;
 use std::cell::RefCell;
+use std::u8;
 
 #[gdextension]
 unsafe impl ExtensionLibrary for Jovia {}
@@ -158,9 +159,26 @@ impl TextGenerator {
     }
 }
 
-pub struct Jovia {}
+#[derive(GodotClass)]
+#[class(base=Object)]
+pub struct TextEmbedding {
+    base: Base<Object>,
+    tokens: Vec<u8>,
+}
 
-impl Jovia {
+#[godot_api]
+impl IObject for TextEmbedding {
+    fn init(base: Base<Object>) -> Self {
+        Self {
+            base,
+            tokens: Vec::new(),
+        }
+    }
+}
+
+#[godot_api]
+impl TextEmbedding {
+    #[func]
     fn embed(sentences: Array<GString>) -> Array<Array<Array<f32>>> {
         let sentences: Vec<String> = sentences.iter_shared().map(|s| s.to_string()).collect();
 
@@ -190,6 +208,7 @@ impl Jovia {
         outer_arr
     }
 
+    #[func]
     fn similarity(sentence1: String, sentence2: String) -> f64 {
         1.0
     }
